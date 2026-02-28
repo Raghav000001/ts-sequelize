@@ -2,6 +2,10 @@ import { genericErrorHandler } from "./middlewares/error.middleware.ts"
 import { attachCorelationId } from "./middlewares/corelation.middleware.ts"
 import express from "express"
 import { serverConfig } from "./config/index.ts"
+import Hotel from "./db/models/hotel.ts"
+import logger from "./config/logger.config.ts"
+import Sequelize from "./db/models/sequelize.ts"
+
 const app = express()
 
 
@@ -26,6 +30,8 @@ app.use(genericErrorHandler)
 
 
 
-app.listen(serverConfig.PORT,()=> {
-    console.log("app is running on port",serverConfig.PORT);
+app.listen(serverConfig.PORT,async ()=> {
+    logger.info("app is running on port",serverConfig.PORT);
+      await Sequelize.authenticate();
+      logger.info('DB Connection has been established successfully!!!.');     
 })

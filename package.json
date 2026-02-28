@@ -6,7 +6,7 @@
 "scripts": {
   "dev":              "nodemon src/server.ts",
   "migrate":          "tsx ./node_modules/.bin/sequelize-cli db:migrate",
-  "migrate:undo":     "tsx ./node_modules/.bin/sequelize-cli db:migrate:undo",
+  "rollback":     "tsx ./node_modules/.bin/sequelize-cli db:migrate:undo",
   "migrate:generate": "tsx ./node_modules/.bin/sequelize-cli migration:generate --name"
 },
   "keywords": [],
