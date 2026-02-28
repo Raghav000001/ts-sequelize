@@ -1,32 +1,6 @@
-# Steps to set up the starter template
-
-# 1. Clone the repository
-git clone https://github.com/Raghav000001/ts-express-starter-template.git
-# (If you want to clone it into a custom folder name:)
-# git clone https://github.com/Raghav000001/ts-express-starter-template.git my-awesome-project
-
-# 2. Go into the project folder
-cd Express-Typescript-Starter-Project
-# (If you used a custom name above, use that instead)
-# cd my-awesome-project
-
-# 3. Install all dependencies
-npm install
-# or shorter version:
-# npm i
-
-# 4. Create a .env file and add the PORT variable
-# Recommended simple way (creates or overwrites .env):
-echo "PORT=3000" > .env
-
-# Alternative (appends if file already exists):
-# echo "PORT=3000" >> .env
-
-# 5. Start the development server
-npm run dev
 # Sequelize + MySQL2 Setup with TypeScript
 
-A step-by-step guide to integrating Sequelize ORM with MySQL2 in a TypeScript project.
+A step-by-step guide to integrating Sequelize ORM with MySQL2 in a TypeScript + ES Module project.
 
 ---
 
@@ -34,7 +8,7 @@ A step-by-step guide to integrating Sequelize ORM with MySQL2 in a TypeScript pr
 
 - Node.js installed
 - A MySQL database running
-- A TypeScript project initialized
+- A TypeScript project with `"type": "module"` in `package.json`
 
 ---
 
@@ -42,21 +16,23 @@ A step-by-step guide to integrating Sequelize ORM with MySQL2 in a TypeScript pr
 
 ```bash
 npm install sequelize mysql2
-npm install --save-dev sequelize-cli
+npm install --save-dev sequelize-cli tsx
 ```
+
+> `tsx` is required to run `.ts` migration files through the Sequelize CLI.
 
 ---
 
 ## Step 2 — Configure `.sequelizerc`
 
-Create a `.sequelizerc` file in the root of your project. This tells the Sequelize CLI where to look for your config, models, seeders, and migrations.
+Create a `.sequelizerc` file in the root of your project. This file **must use CommonJS syntax** — no `import/export` allowed here regardless of your project setup.
 
 ```js
 // .sequelizerc
 const path = require('path');
 
 module.exports = {
-  'config':          path.resolve('./src/config/config.ts'),
+  'config':          path.resolve('./src/config/sequelize.config.cjs'),
   'models-path':     path.resolve('./src/db/models'),
   'seeders-path':    path.resolve('./src/db/seeders'),
   'migrations-path': path.resolve('./src/db/migrations'),
@@ -71,7 +47,7 @@ module.exports = {
 npx sequelize-cli init
 ```
 
-This generates the folders defined in `.sequelizerc` along with a default `config.json`. Rename it and change its extension to `.ts` (or `.js`).
+This generates the folders defined in `.sequelizerc`.
 
 ---
 
@@ -79,9 +55,12 @@ This generates the folders defined in `.sequelizerc` along with a default `confi
 
 ### `src/config/index.ts`
 
-Add a typed `db_config` export to your main config file:
+Your main app config file — used by your app, not by the CLI:
 
 ```ts
+import dotenv from 'dotenv';
+dotenv.config();
+
 export interface DBConfig {
   DB_HOST: string;
   DB_PORT: number;
@@ -99,57 +78,89 @@ export const db_config: DBConfig = {
 };
 ```
 
-### `src/config/config.ts`
+### `src/config/sequelize.config.cjs`
 
-Update the Sequelize config file to pull values from your central config:
+A **separate** config file only for the Sequelize CLI. Must be `.cjs` because the CLI uses CommonJS internally and cannot load ES modules or TypeScript directly.
 
-```ts
-import { db_config } from './index';
+```js
+// src/config/sequelize.config.cjs
+require('dotenv').config();
 
-const config = {
-  username: db_config.DB_USER,
-  password: db_config.DB_PASSWORD,
-  database: db_config.DB_NAME,
-  host:     db_config.DB_HOST,
-  port:     db_config.DB_PORT,
+module.exports = {
+  username: process.env.DB_USER     || 'root',
+  password: process.env.DB_PASSWORD || 'password',
+  database: process.env.DB_NAME     || 'crud_with_ts_sql',
+  host:     process.env.DB_HOST     || 'localhost',
+  port:     Number(process.env.DB_PORT) || 3306,
   dialect:  'mysql',
 };
-
-export default config;
 ```
+
+> Both `index.ts` and `sequelize.config.cjs` read from the same `.env` file — so there is no duplication of values, just two consumers of the same source.
 
 ---
 
-## Step 5 — Generate a Migration
+## Step 5 — Add Migration Scripts to `package.json`
 
-```bash
-npx sequelize-cli migration:generate --name create-hotel-table
+Since we want `.ts` migration files, we use `tsx` to run the CLI instead of `npx sequelize-cli` directly:
+
+```json
+"scripts": {
+  "dev":              "nodemon src/server.ts",
+  "migrate":          "tsx ./node_modules/.bin/sequelize-cli db:migrate",
+  "migrate:undo":     "tsx ./node_modules/.bin/sequelize-cli db:migrate:undo",
+  "migrate:generate": "tsx ./node_modules/.bin/sequelize-cli migration:generate --name"
+}
 ```
 
-This creates a new timestamped file inside `src/db/migrations/`. Open it and define your table schema using Sequelize's `queryInterface`:
+> Always use `npm run migrate` instead of `npx sequelize-cli db:migrate` — otherwise `.ts` files won't be understood by the CLI.
+
+---
+
+## Step 6 — Generate a Migration
+
+```bash
+npm run migrate:generate create-hotel-table
+```
+
+This creates a new timestamped file inside `src/db/migrations/`.
+
+---
+
+## Step 7 — Write the Migration
+
+Open the generated file and define your table schema. Use `module.exports` (not `export default`) — but you can still use TypeScript types with `import type`:
 
 ```ts
-import { QueryInterface, DataTypes } from 'sequelize';
+// src/db/migrations/20260227082148-create-hotel-table.ts
+import type { QueryInterface } from 'sequelize';
 
 module.exports = {
   async up(queryInterface: QueryInterface) {
     await queryInterface.createTable('Hotels', {
       id: {
-        type: DataTypes.INTEGER,
+        type: 'INTEGER',
         autoIncrement: true,
         primaryKey: true,
+        allowNull: false,
       },
       name: {
-        type: DataTypes.STRING,
+        type: 'VARCHAR(255)',
+        allowNull: false,
+      },
+      location: {
+        type: 'VARCHAR(255)',
         allowNull: false,
       },
       createdAt: {
-        type: DataTypes.DATE,
+        type: 'DATE',
         allowNull: false,
+        defaultValue: new Date(),
       },
       updatedAt: {
-        type: DataTypes.DATE,
+        type: 'DATE',
         allowNull: false,
+        defaultValue: new Date(),
       },
     });
   },
@@ -162,16 +173,16 @@ module.exports = {
 
 ---
 
-## Step 6 — Run Migrations
+## Step 8 — Run Migrations
 
 ```bash
-npx sequelize-cli db:migrate
+npm run migrate
 ```
 
 To undo the last migration:
 
 ```bash
-npx sequelize-cli db:migrate:undo
+npm run migrate:undo
 ```
 
 ---
@@ -179,14 +190,17 @@ npx sequelize-cli db:migrate:undo
 ## Project Structure
 
 ```
-src/
-├── config/
-│   ├── index.ts         # Central config & environment variables
-│   └── config.ts        # Sequelize DB config
-└── db/
-    ├── models/          # Sequelize models
-    ├── migrations/      # Migration files
-    └── seeders/         # Seeder files
+root/
+├── .sequelizerc                        # CLI config (CommonJS, always)
+├── .env                                # Environment variables
+└── src/
+    ├── config/
+    │   ├── index.ts                    # App config (used by your app)
+    │   └── sequelize.config.cjs        # Sequelize CLI config (used by CLI only)
+    └── db/
+        ├── models/                     # Sequelize models
+        ├── migrations/                 # Migration files (.ts with module.exports)
+        └── seeders/                    # Seeder files
 ```
 
 ---
@@ -203,4 +217,32 @@ DB_USER=root
 DB_PASSWORD=password
 ```
 
-> **Note:** Add `.env` to your `.gitignore` to avoid exposing credentials and rename the extenion of migration file to .ejs if conflict arises.
+> Add `.env` to your `.gitignore` to avoid exposing credentials.
+
+---
+
+## Why This Setup Works
+
+| File | Format | Reason |
+|---|---|---|
+| `.sequelizerc` | CommonJS | CLI loads this with `require()` directly |
+| `sequelize.config.cjs` | CommonJS | CLI cannot load ES modules or TypeScript |
+| `index.ts` | ES Module | Used by your app normally |
+| Migration files `.ts` | TS + `module.exports` | `tsx` handles transpilation for CLI |
+| App code | ES Module (`import/export`) | `"type": "module"` in package.json |
+
+---
+
+## Common Errors & Fixes
+
+**`module is not defined in ES module scope`**
+→ File is being treated as ES module. Rename config file to `.cjs` or use `npm run migrate` instead of `npx sequelize-cli`.
+
+**`require is not defined in ES module scope`**
+→ You used `require()` inside a `.js` file. Rename it to `.cjs`.
+
+**`Access denied for user ''@'localhost'`**
+→ `.env` not loading. Make sure `require('dotenv').config()` is at the top of `sequelize.config.cjs`.
+
+**`Cannot use import statement in a module`**
+→ Migration file is using `export default` — use `module.exports` instead (while keeping `import type` for types).

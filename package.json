@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "dev": "nodemon src/server.ts"
-  },
+"scripts": {
+  "dev":              "nodemon src/server.ts",
+  "migrate":          "tsx ./node_modules/.bin/sequelize-cli db:migrate",
+  "migrate:undo":     "tsx ./node_modules/.bin/sequelize-cli db:migrate:undo",
+  "migrate:generate": "tsx ./node_modules/.bin/sequelize-cli migration:generate --name"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -26,6 +29,7 @@
     "nodemon": "^3.1.14",
     "sequelize-cli": "^6.6.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
