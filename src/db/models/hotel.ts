@@ -7,7 +7,7 @@
              declare id: CreationOptional<number>;
              declare name: string; 
              declare location: string;
-             declare ratings: number | null;
+             declare ratings?: number | null;
              declare createdAt: CreationOptional<Date>;
              declare updatedAt: CreationOptional<Date>;
     }
