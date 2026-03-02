@@ -10,6 +10,7 @@
              declare ratings?: number | null;
              declare createdAt: CreationOptional<Date>;
              declare updatedAt: CreationOptional<Date>;
+             declare deletedAt: CreationOptional<Date | null>;
     }
 
 
@@ -39,6 +40,11 @@
            },
            updatedAt:{
             type: 'DATE',
+           },
+           deletedAt:{
+             type:'DATE',
+             allowNull:true,
+             defaultValue:null
            }
         }
     ,{

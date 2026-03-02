@@ -2,6 +2,7 @@ import logger from "../config/logger.config.ts";
 import Hotel from "../db/models/hotel.ts";
 import { type createHotelDto, type updateHotelDto } from "../dto/hotel.dto.ts";
 import { badRequest } from "../errors/app.errors.ts";
+import { Op } from "sequelize";
 
 export const createHotel = async (hotelData: createHotelDto) => {
   try {
@@ -18,7 +19,11 @@ export const createHotel = async (hotelData: createHotelDto) => {
 
 export const getAllHotels = async () => {
   try {
-    const hotels = await Hotel.findAll();
+    const hotels = await Hotel.findAll({
+      where:{
+         deletedAt:null 
+      }
+    });
     return hotels;
   } catch (error) {
     logger.error("Error while fetching hotels", error);
@@ -45,6 +50,40 @@ export async function deleteHotelById(id: number) {
   await hotel?.destroy();
   return hotel;
 }
+
+
+// soft  delete hotel 
+export async function softDeleteHotelById(id: number) {
+  const hotel = await Hotel.findByPk(Number(id));
+  if (!hotel) {
+     logger.error("hotel not found")
+     throw new badRequest("Hotel not found");
+  }
+   hotel.deletedAt = new Date()
+   await hotel.save({validate:false})
+   logger.info(`hotel with id:${id} soft deleted successfully`)
+   return hotel;
+}
+
+
+// get deleted hotels
+export const getDeletedHotels = async () => {
+  try {
+    const hotels = await Hotel.findAll({
+      where:{
+         deletedAt:{
+            [Op.not]:null
+         }
+      }
+    });
+    return hotels;
+  } catch (error) {
+    logger.error("Error while fetching hotels", error);
+    throw new badRequest("Error while fetching hotels");
+  }
+};
+
+
 
 // update hotel by id
 export async function updateHotelById(id: number, hotelData: updateHotelDto) {
